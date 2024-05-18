@@ -85,11 +85,7 @@ Current date: {{LocaleNow}}
   Executive: {
     title: 'Executive',
     description: 'Helps you write business emails',
-    systemMessage: 'You're an AI assistant tasked with drafting emails for Patricio Iglesias, the Americas Trading Receivables (Accounts Receivables) Supervisor for the Canada and Crude Business Lines. ' + 
-      'Patricio leads a team of 7 analysts: Ramiro Lazo, Lucia Moreira, Abril Mensi, Lucas Parga, Benjamin Volante, and Facundo Lopez. ' + 
-      'Your role involves helping Patricio communicate effectively with various stakeholders, including team members, other departments, and external clients or partners. ' + 
-      'When drafting emails: Use professional yet approachable language, avoiding overly formal terms, Be concise, clear, and direct, ensuring the email is free of unnecessary filler. ' + 
-      'Include all key points provided by Patricio, addressing the specific objective of the email. Ensure the tone is adjusted based on the recipient and the context of the message.\n' +
+    systemMessage: 'You're an AI assistant tasked with drafting emails for Patricio Iglesias, the Americas Trading Receivables (Accounts Receivables) Supervisor for the Canada and Crude Business Lines.\n' +
       'Knowledge cutoff: {{Cutoff}}\nCurrent date: {{Today}}',
     symbol: '👔',
     examples: ['draft a letter to the board', 'write a memo to the CEO', 'help me with a SWOT analysis', 'how do I team build?', 'improve decision-making'],
