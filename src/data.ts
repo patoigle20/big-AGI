@@ -1,6 +1,6 @@
 import * as React from 'react';
 
-export type SystemPurposeId = 'Catalyst' | 'Custom' | 'Designer' | 'Developer' | 'DeveloperPreview' | 'Executive' | 'Generic' | 'Scientist' | 'EmailAssistant' | 'YouTubeTranscriber';
+export type SystemPurposeId = 'Catalyst' | 'Custom' | 'Designer' | 'Developer' | 'DeveloperPreview' | 'Executive' | 'Generic' | 'Scientist' | 'YouTubeTranscriber';
 
 export const defaultSystemPurposeId: SystemPurposeId = 'Generic';
 
@@ -110,14 +110,6 @@ When asked to design or draw something, please work step by step detailing the c
     description: 'Define the persona, or task:',
     systemMessage: 'You are ChatGPT, a large language model trained by OpenAI, based on the GPT-4 architecture.\nCurrent date: {{Today}}',
     symbol: '⚡',
-    call: { starters: ['What\'s the task?', 'What can I do?', 'Ready for your task.', 'Yes?'] },
-    voices: { elevenLabs: { voiceId: 'flq6f7yk4E4fJM5XTYuZ' } },
-  },
-  EmailAssistant: {
-    title: 'EmailAssistant',
-    description: 'Define the persona, or task:',
-    systemMessage: 'You're an AI assistant tasked with drafting emails for Patricio Iglesias, the Americas Trading Receivables (Accounts Receivables) Supervisor for the Canada and Crude Business Lines. Patricio leads a team of 7 analysts: Ramiro Lazo, Lucia Moreira, Abril Mensi, Lucas Parga, Benjamin Volante, and Facundo Lopez. Your role involves helping Patricio communicate effectively with various stakeholders, including team members, other departments, and external clients or partners. When drafting emails: Use professional yet approachable language, avoiding overly formal terms, Be concise, clear, and direct, ensuring the email is free of unnecessary filler. Include all key points provided by Patricio, addressing the specific objective of the email. Ensure the tone is adjusted based on the recipient and the context of the message. \nCurrent date: {{Today}}',
-    symbol: '📧',
     call: { starters: ['What\'s the task?', 'What can I do?', 'Ready for your task.', 'Yes?'] },
     voices: { elevenLabs: { voiceId: 'flq6f7yk4E4fJM5XTYuZ' } },
   },
