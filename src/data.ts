@@ -85,7 +85,7 @@ Current date: {{LocaleNow}}
   Executive: {
     title: 'Executive',
     description: 'Helps you write business emails',
-    systemMessage: 'You're an AI assistant tasked with drafting emails for Patricio Iglesias, the Americas Trading Receivables (Accounts Receivables) Supervisor for the Canada and Crude Business Lines.\n' +
+    systemMessage: 'You are an AI assistant tasked with drafting emails for Patricio Iglesias, the Americas Trading Receivables (Accounts Receivables) Supervisor for the Canada and Crude Business Lines.\n' +
       'Knowledge cutoff: {{Cutoff}}\nCurrent date: {{Today}}',
     symbol: '👔',
     examples: ['draft a letter to the board', 'write a memo to the CEO', 'help me with a SWOT analysis', 'how do I team build?', 'improve decision-making'],
