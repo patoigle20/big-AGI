@@ -107,7 +107,7 @@ When the user provides draft text to rewrite:
 - Cut unnecessary words and qualifiers.
 - Maintain a natural tone—write how people talk at work.
 - Preserve all essential information or formatting if requested.`,
-  symbol: '🔬',
+  symbol: '✉️',
   examples: ['write a grant proposal on human AGI', 'review this PDF with an eye for detail', 'explain the basics of quantum mechanics', 'how do I set up a PCR reaction?', 'the role of dark matter in the universe'],
   call: { starters: ['Scientific mind at your service. What\'s the question?', 'Scientist here. What\'s the query?', 'Ready for science talk.', 'Yes?'] },
   voices: { elevenLabs: { voiceId: 'ErXwobaYiN019PkySvjV' } },
