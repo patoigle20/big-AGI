@@ -4,7 +4,7 @@ import { createTRPCRouter, publicProcedure } from '~/server/trpc/trpc.server';
 import { env } from '~/server/env';
 import { fetchJsonOrTRPCThrow } from '~/server/trpc/trpc.router.fetchers';
 
-import { LLM_IF_ANT_PromptCaching, LLM_IF_OAI_Chat, LLM_IF_OAI_Fn, LLM_IF_OAI_Vision } from '~/common/stores/llms/llms.types';
+import { LLM_IF_ANT_PromptCaching, LLM_IF_OAI_Chat, LLM_IF_OAI_Fn, LLM_IF_OAI_Vision, LLM_IF_Tools_WebSearch } from '~/common/stores/llms/llms.types';
 
 import { ListModelsResponse_schema, ModelDescriptionSchema } from '../llm.server.types';
 
@@ -81,6 +81,7 @@ const PER_MODEL_BETA_FEATURES: { [modelId: string]: string[] } = {
 type AnthropicHeaderOptions = {
   modelIdForBetaFeatures?: string;
   vndAntWebFetch?: boolean;
+  vndAnt1MContext?: boolean;
 };
 
 function _anthropicHeaders(options?: AnthropicHeaderOptions): Record<string, string> {
@@ -98,6 +99,10 @@ function _anthropicHeaders(options?: AnthropicHeaderOptions): Record<string, str
   // Note: web-fetch-2025-09-10 is documented in official API docs but not yet in TypeScript SDK types
   if (options?.vndAntWebFetch)
     betaFeatures.push('web-fetch-2025-09-10');
+
+  // Add beta feature for 1M context window if enabled
+  if (options?.vndAnt1MContext)
+    betaFeatures.push('context-1m-2025-08-07');
 
   // Note: web-search is now GA and no longer requires a beta header
 
@@ -175,6 +180,23 @@ const listModelsInputSchema = z.object({
 });
 
 
+// Helpers
+
+/**
+ * Injects the LLM_IF_Tools_WebSearch interface for models that have web search/fetch parameters.
+ * This allows the UI to show the web search indicator automatically based on model capabilities.
+ */
+function _injectWebSearchInterface(model: ModelDescriptionSchema): ModelDescriptionSchema {
+  const hasWebParams = model.parameterSpecs?.some(spec =>
+    spec.paramId === 'llmVndAntWebSearch' || spec.paramId === 'llmVndAntWebFetch'
+  );
+  return (hasWebParams && !model.interfaces?.includes(LLM_IF_Tools_WebSearch)) ? {
+    ...model,
+    interfaces: [...model.interfaces, LLM_IF_Tools_WebSearch],
+  } : model;
+}
+
+
 // Router
 
 export const llmAnthropicRouter = createTRPCRouter({
@@ -189,37 +211,60 @@ export const llmAnthropicRouter = createTRPCRouter({
       const wireModels = await anthropicGETOrThrow(access, undefined, '/v1/models?limit=1000');
       const { data: availableModels } = AnthropicWire_API_Models_List.Response_schema.parse(wireModels);
 
+      // sort by: family (desc) > class (desc) > date (desc) -- Future NOTE: -5- will match -4-5- and -3-5-.. figure something else out
+      const familyPrecedence = ['-4-7-', '-4-5-', '-4-1-', '-4-', '-3-7-', '-3-5-', '-3-'];
+      const classPrecedence = ['-opus-', '-sonnet-', '-haiku-'];
+
+      const getFamilyIdx = (id: string) => familyPrecedence.findIndex(f => id.includes(f));
+      const getClassIdx = (id: string) => classPrecedence.findIndex(c => id.includes(c));
+
       // cast the models to the common schema
-      const models = availableModels.reduce((acc, model) => {
+      const models = availableModels
+        .sort((a, b) => {
+          const familyA = getFamilyIdx(a.id);
+          const familyB = getFamilyIdx(b.id);
+          const classA = getClassIdx(a.id);
+          const classB = getClassIdx(b.id);
 
-        // find the model description
-        const hardcodedModel = hardcodedAnthropicModels.find(m => m.id === model.id);
-        if (hardcodedModel) {
+          // family desc (lower index = better, -1 = unknown goes last)
+          if (familyA !== familyB) return (familyA === -1 ? 999 : familyA) - (familyB === -1 ? 999 : familyB);
+          // class desc
+          if (classA !== classB) return (classA === -1 ? 999 : classA) - (classB === -1 ? 999 : classB);
+          // date desc (newer first) - string comparison works since format is YYYYMMDD
+          return b.id.localeCompare(a.id);
+        })
+        .reduce((acc, model) => {
 
-          // update creation date
-          if (!hardcodedModel.created && model.created_at)
-            hardcodedModel.created = roundTime(model.created_at);
+          // find the model description
+          const hardcodedModel = hardcodedAnthropicModels.find(m => m.id === model.id);
+          if (hardcodedModel) {
 
-          // add FIRST a thinking variant, if defined
-          if (hardcodedAnthropicVariants[model.id])
-            acc.push({
-              ...hardcodedModel,
-              ...hardcodedAnthropicVariants[model.id],
-            });
+            // update creation date
+            if (!hardcodedModel.created && model.created_at)
+              hardcodedModel.created = roundTime(model.created_at);
 
-          // add the base model
-          acc.push(hardcodedModel);
+            // add FIRST a thinking variant, if defined
+            if (hardcodedAnthropicVariants[model.id])
+              acc.push({
+                ...hardcodedModel,
+                ...hardcodedAnthropicVariants[model.id],
+              });
 
-        } else {
+            // add the base model
+            acc.push(hardcodedModel);
 
-          // for day-0 support of new models, create a placeholder model using sensible defaults
-          const novelModel = _createPlaceholderModel(model);
-          console.log('[DEV] anthropic.router: new model found, please configure it:', novelModel.id);
-          acc.push(novelModel);
+          } else {
 
-        }
-        return acc;
-      }, [] as ModelDescriptionSchema[]);
+            // for day-0 support of new models, create a placeholder model using sensible defaults
+            const novelModel = _createPlaceholderModel(model);
+            console.log('[DEV] anthropic.router: new model found, please configure it:', novelModel.id);
+            acc.push(novelModel);
+
+          }
+
+          return acc;
+        }, [] as ModelDescriptionSchema[])
+        .map(_injectWebSearchInterface);
 
       // developers warning for obsoleted models (we have them, but they are not in the API response anymore)
       const apiModelIds = new Set(availableModels.map(m => m.id));
