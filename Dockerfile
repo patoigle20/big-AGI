@@ -48,6 +48,7 @@ RUN sh -c '[ ! -e /lib/libssl.so.3 ] && ln -s /usr/lib/libssl.so.3 /lib/libssl.s
 
 # Build the application
 ENV NODE_ENV=production
+RUN npm install pg @types/pg --no-save
 RUN npm run build
 
 # Reduce installed packages to production-only
