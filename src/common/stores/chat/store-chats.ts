@@ -1,7 +1,3 @@
-import { messageFragmentsReduceText } from './chat.message';
-import { appendMessage as persistAppend } from '~/lib/persist';
-
-
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { useShallow } from 'zustand/react/shallow';
