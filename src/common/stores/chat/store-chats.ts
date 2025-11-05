@@ -1,3 +1,7 @@
+import { messageFragmentsReduceText } from './chat.message';
+import { appendMessage as persistAppend } from '~/lib/persist';
+
+
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { useShallow } from 'zustand/react/shallow';
@@ -292,23 +296,43 @@ export const useChatStore = create<ConversationsStore>()(/*devtools(*/
         _get().conversations.find(_c => _c.id === conversationId)?.messages ?? undefined,
 
 
-      appendMessage: (conversationId: DConversationId, message: DMessage) =>
-        _get()._editConversation(conversationId, conversation => {
+appendMessage: (conversationId: DConversationId, message: DMessage) =>
+  _get()._editConversation(conversationId, conversation => {
 
-          // [workspace] import message's resources into the workspace
-          workspaceActions().importAssignmentsFromMessages(workspaceForConversationIdentity(conversationId), [message]);
+    // [workspace] import message's resources into the workspace
+    workspaceActions().importAssignmentsFromMessages(workspaceForConversationIdentity(conversationId), [message]);
 
-          if (!message.pendingIncomplete)
-            updateMessagesTokenCounts([message], true, 'appendMessage');
+    if (!message.pendingIncomplete)
+      updateMessagesTokenCounts([message], true, 'appendMessage');
 
-          const messages = [...conversation.messages, message];
+    const messages = [...conversation.messages, message];
 
-          return {
-            messages,
-            tokenCount: messages.reduce((sum, message) => sum + 4 + message.tokenCount || 0, 3),
-            updated: Date.now(),
-          };
-        }),
+    // --- Persistencia centralizada en Postgres (solo user/assistant) ---
+    try {
+      if (typeof window !== 'undefined') {
+        const sid = localStorage.getItem('sid');
+        const role = message.role;
+        if (sid && (role === 'user' || role === 'assistant')) {
+          const text = messageFragmentsReduceText(message.fragments || []).trim();
+          if (text) {
+            // no esperamos (no bloquea la UI)
+            void persistAppend(sid, role, text, message.tokenCount || undefined)
+              .catch(err => console.warn('persist appendMessage failed:', err));
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('persist side-effect error:', e);
+    }
+    // -------------------------------------------------------------------
+
+    return {
+      messages,
+      tokenCount: messages.reduce((sum, m) => sum + 4 + (m.tokenCount || 0), 3),
+      updated: Date.now(),
+    };
+  }),
+
 
       deleteMessage: (conversationId: DConversationId, messageId: DMessageId) =>
         _get()._editConversation(conversationId, conversation => {
