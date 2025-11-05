@@ -1,4 +1,3 @@
-// src/lib/persist.ts
 export async function createSession(title = 'New chat') {
   const r = await fetch('/api/sessions', {
     method: 'POST',
