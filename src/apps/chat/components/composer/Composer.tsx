@@ -331,10 +331,30 @@ export function Composer(props: {
     const metadata = inReferenceTo?.length ? { inReferenceTo: inReferenceTo } : undefined;
 
     // send the message - NOTE: if successful, the ownership of the fragments is transferred to the receiver, so we just clear them
-    const enqueued = onAction(targetConversationId, _chatExecuteMode, fragments, metadata);
-    if (enqueued)
-      _handleClearText();
-    return enqueued;
+// send the message ...
+const enqueued = onAction(targetConversationId, _chatExecuteMode, fragments, metadata);
+
+if (enqueued) {
+  try {
+    // 1) texto plano del mensaje enviado (de los fragments)
+    const userText = messageFragmentsReduceText(fragments).trim();
+
+    // 2) sid que ya generamos y guardamos en localStorage
+    const sid = localStorage.getItem('sid');
+
+    // 3) persistir en Postgres
+    if (sid && userText) {
+      await appendMessage(sid, 'user', userText);
+    }
+  } catch (e) {
+    // no rompemos el envío si falla la persistencia
+    console.warn('persist user message failed:', e);
+  }
+
+  _handleClearText();
+}
+return enqueued;
+
   }, [targetConversationId, confirmProceedIfAttachmentsNotSupported, composerTextSuffix, props.capabilityHasT2IEdit, inReferenceTo, onAction, _handleClearText, attachmentsTakeAllFragments]);
 
   const handleSendAction = React.useCallback(async (chatExecuteMode: ChatExecuteMode, composerText: string): Promise<boolean> => {
