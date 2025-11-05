@@ -1,3 +1,6 @@
+import { appendMessage } from '~/lib/persist';
+import { messageFragmentsReduceText } from '~/common/stores/chat/chat.message'; // ya lo tienes importado
+
 import * as React from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import type { FileWithHandle } from 'browser-fs-access';
