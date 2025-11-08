@@ -1,72 +1,101 @@
-// Next.js App Router route (route.ts) — POST upsert conversation (usa SYNC_API_KEY)
+// Next.js App Router route: POST /api/sync/conversations
+// Permite autenticación por:
+//  - Authorization: Bearer <SYNC_API_KEY>
+//  - Authorization: Basic <base64> con credenciales HTTP_BASIC_AUTH_*
 import { NextResponse } from 'next/server';
-import prisma from '~/lib/prisma';
+import prisma from '~/server/lib/prisma';
 
-async function getApiKeyFromReq(req: Request) {
+async function getAuthFromReq(req: Request) {
   const auth = req.headers.get('authorization') || '';
-  if (auth.startsWith('Bearer ')) return auth.slice(7);
+  if (auth.startsWith('Bearer ')) return { type: 'bearer', token: auth.slice(7) };
+  if (auth.startsWith('Basic ')) return { type: 'basic', token: auth.slice(6) };
   return null;
 }
 
-export async function POST(req: Request) {
-  const apiKey = await getApiKeyFromReq(req);
-  if (!apiKey || apiKey !== process.env.SYNC_API_KEY) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+function checkBasic(base64token: string) {
+  try {
+    const decoded = Buffer.from(base64token, 'base64').toString('utf8'); // "username:password"
+    const [user, pass] = decoded.split(':');
+    return (
+      user === process.env.HTTP_BASIC_AUTH_USERNAME &&
+      pass === process.env.HTTP_BASIC_AUTH_PASSWORD
+    );
+  } catch {
+    return false;
   }
+}
 
-  const body = await req.json();
-  const conversation = body.conversation;
-  if (!conversation?.id) return NextResponse.json({ error: 'Missing conversation' }, { status: 400 });
+export async function POST(req: Request) {
+  try {
+    // Auth
+    const auth = getAuthFromReq(req);
+    let allowed = false;
+    if (auth?.type === 'bearer') {
+      allowed = auth.token === process.env.SYNC_API_KEY;
+    } else if (auth?.type === 'basic') {
+      allowed = checkBasic(auth.token);
+    }
+    if (!allowed) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
 
-  // Por simplicidad, usamos ownerId = process.env.SYNC_OWNER_ID (útil si no tienes usuarios)
-  const ownerId = process.env.SYNC_OWNER_ID || 'default-owner';
+    const body = await req.json();
+    const conversation = body.conversation;
+    if (!conversation?.id) return NextResponse.json({ error: 'Missing conversation' }, { status: 400 });
 
-  // Upsert conversation meta
-  const now = new Date(conversation.updated || Date.now());
-  await prisma.conversation.upsert({
-    where: { id: conversation.id },
-    update: {
-      title: conversation.userTitle || conversation.autoTitle || null,
-      systemPurposeId: conversation.systemPurposeId || 'default',
-      updatedAt: now,
-      version: conversation.version ?? 1,
-      isIncognito: conversation._isIncognito ?? false,
-      ownerId,
-    },
-    create: {
-      id: conversation.id,
-      ownerId,
-      title: conversation.userTitle || conversation.autoTitle || null,
-      systemPurposeId: conversation.systemPurposeId || 'default',
-      createdAt: new Date(conversation.created || Date.now()),
-      updatedAt: now,
-      version: conversation.version ?? 1,
-      isIncognito: conversation._isIncognito ?? false,
-    },
-  });
+    // Owner id: prioridad a env SYNC_OWNER_ID (útil si no hay usuarios implementados)
+    const ownerId = process.env.SYNC_OWNER_ID || 'default-owner';
 
-  // Upsert messages: insert si no existe, si existe se puede actualizar opcionalmente (aquí solo insertamos los nuevos)
-  if (Array.isArray(conversation.messages)) {
-    for (const m of conversation.messages) {
-      try {
-        await prisma.message.create({
-          data: {
-            id: m.id,
-            conversationId: conversation.id,
-            role: m.role,
-            text: m.text ?? null,
-            fragmentsJson: m.fragments ? JSON.stringify(m.fragments) : null,
-            createdAt: new Date(m.created || Date.now()),
-            updatedAt: m.updated ? new Date(m.updated) : undefined,
-            isDeleted: m.isDeleted ?? false,
-            metaJson: m.meta ? JSON.stringify(m.meta) : null,
-          },
-        });
-      } catch (e) {
-        // si ya existe, ignoramos; para un producto más completo podrías hacer update con LWW
+    // Upsert conversation metadata
+    const now = new Date(conversation.updated || Date.now());
+    await prisma.conversation.upsert({
+      where: { id: conversation.id },
+      update: {
+        title: conversation.userTitle || conversation.autoTitle || null,
+        systemPurposeId: conversation.systemPurposeId || 'default',
+        updatedAt: now,
+        version: conversation.version ?? 1,
+        isIncognito: conversation._isIncognito ?? false,
+        ownerId,
+      },
+      create: {
+        id: conversation.id,
+        ownerId,
+        title: conversation.userTitle || conversation.autoTitle || null,
+        systemPurposeId: conversation.systemPurposeId || 'default',
+        createdAt: new Date(conversation.created || Date.now()),
+        updatedAt: now,
+        version: conversation.version ?? 1,
+        isIncognito: conversation._isIncognito ?? false,
+      },
+    });
+
+    // Insert messages existentes (si no existen). No hacemos update salvo mejora futura.
+    if (Array.isArray(conversation.messages)) {
+      for (const m of conversation.messages) {
+        try {
+          await prisma.message.create({
+            data: {
+              id: m.id,
+              conversationId: conversation.id,
+              role: m.role ?? 'user',
+              text: m.text ?? null,
+              fragmentsJson: m.fragments ? JSON.stringify(m.fragments) : null,
+              createdAt: new Date(m.created || Date.now()),
+              updatedAt: m.updated ? new Date(m.updated) : undefined,
+              isDeleted: m.isDeleted ?? false,
+              metaJson: m.meta ? JSON.stringify(m.meta) : null,
+            },
+          });
+        } catch (e) {
+          // ignore if already exists or error on insert; se puede mejorar con LWW update
+        }
       }
     }
-  }
 
-  return NextResponse.json({ ok: true });
+    return NextResponse.json({ ok: true });
+  } catch (err) {
+    console.error('sync error', err);
+    return NextResponse.json({ error: 'Server error' }, { status: 500 });
+  }
 }
