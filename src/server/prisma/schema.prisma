@@ -1,25 +1,18 @@
-generator client {
-  provider = "prisma-client-js"
-}
-
-datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
-}
-
 model User {
   id        String    @id @default(uuid())
   email     String?   @unique
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
 
+  // relación con Conversation (asegúrate de que Conversation tenga ownerId y owner)
   conversations Conversation[]
 }
 
 model Conversation {
   id              String    @id
   ownerId         String
-  title           String? 
+  owner           User      @relation(fields: [ownerId], references: [id])
+  title           String?
   systemPurposeId String
   createdAt       DateTime
   updatedAt       DateTime
@@ -34,15 +27,13 @@ model Conversation {
 model Message {
   id             String   @id
   conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id])
   role           String
-  text           String?    // texto plano
-  fragmentsJson  String?    // si la app usa fragmentos, guardarlos como JSON
+  text           String?
+  fragmentsJson  String?
   createdAt      DateTime
-  updatedAt      DateTime? 
+  updatedAt      DateTime?
   isDeleted      Boolean   @default(false)
-  metaJson       String? 
-
-  conversation Conversation @relation(fields: [conversationId], references: [id])
-
+  metaJson       String?
   @@index([conversationId])
 }
