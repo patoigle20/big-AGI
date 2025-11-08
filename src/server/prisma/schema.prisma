@@ -7,6 +7,17 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum LinkStorageDataType {
+  CHAT_V1
+  // Si tienes otros tipos, ponlos también.
+}
+
+model TradeLink {
+  // ... (tu modelo actual)
+  dataType LinkStorageDataType
+  // Resto de tu modelo...
+}
+
 /// Models for chat sync
 model User {
   id        String         @id @default(uuid())
@@ -17,6 +28,8 @@ model User {
   // relación con Conversation (asegúrate de que Conversation tenga ownerId y owner)
   conversations Conversation[]
 }
+
+
 
 model Conversation {
   id              String      @id
