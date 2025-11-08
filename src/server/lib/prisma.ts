@@ -1,4 +1,3 @@
-```typescript
 // Prisma client singleton para Next.js / server
 import { PrismaClient } from '@prisma/client';
 
