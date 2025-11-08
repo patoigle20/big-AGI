@@ -1,63 +1,48 @@
-// Prisma is the ORM for server-side (API) access to the database
-//
-// This file defines the schema for the database.
-//  - make sure to run 'prisma generate' after making changes to this file
-//  - make sure to run 'prisma db push' to sync the remote database with the schema
-//
-// Database is optional: when the environment variables are not set, the database is not used at all,
-// and the storage of data in Big-AGI is limited to client-side (browser) storage.
-//
-// The database is used for:
-//  - the 'sharing' function, to let users share the chats with each other
-
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider  = "postgresql"
-  url       = env("POSTGRES_PRISMA_URL") // uses connection pooling
-  directUrl = env("POSTGRES_URL_NON_POOLING") // uses a direct connection
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
-//
-// Storage of Linked Data
-//
-model LinkStorage {
-  id String @id @default(uuid())
+model User {
+  id        String    @id @default(uuid())
+  email     String?   @unique
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
 
-  ownerId    String
-  visibility LinkStorageVisibility
-
-  dataType  LinkStorageDataType
-  dataTitle String?
-  dataSize  Int
-  data      Json
-
-  upVotes    Int @default(0)
-  downVotes  Int @default(0)
-  flagsCount Int @default(0)
-  readCount  Int @default(0)
-  writeCount Int @default(1)
-
-  // time-based expiration
-  expiresAt DateTime?
-
-  // manual deletion
-  deletionKey String
-  isDeleted   Boolean   @default(false)
-  deletedAt   DateTime?
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  conversations Conversation[]
 }
 
-enum LinkStorageVisibility {
-  PUBLIC
-  UNLISTED
-  PRIVATE
+model Conversation {
+  id              String    @id
+  ownerId         String
+  title           String? 
+  systemPurposeId String
+  createdAt       DateTime
+  updatedAt       DateTime
+  version         Int       @default(1)
+  isIncognito     Boolean   @default(false)
+
+  messages Message[]
+
+  @@index([ownerId])
 }
 
-enum LinkStorageDataType {
-  CHAT_V1
+model Message {
+  id             String   @id
+  conversationId String
+  role           String
+  text           String?    // texto plano
+  fragmentsJson  String?    // si la app usa fragmentos, guardarlos como JSON
+  createdAt      DateTime
+  updatedAt      DateTime? 
+  isDeleted      Boolean   @default(false)
+  metaJson       String? 
+
+  conversation Conversation @relation(fields: [conversationId], references: [id])
+
+  @@index([conversationId])
 }
