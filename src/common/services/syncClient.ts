@@ -1,6 +1,8 @@
 // Cliente simple para subir conversaciones al servidor
-export async function uploadConversation(apiKey: string, conversation: any) {
-  const res = await fetch('/api/sync/conversations', {
+export async function uploadConversation(apiKey: string, conversation: any, baseUrl = '') {
+  // baseUrl opcional, por defecto relativo
+  const url = (baseUrl || '') + '/api/sync/conversations';
+  const res = await fetch(url, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
