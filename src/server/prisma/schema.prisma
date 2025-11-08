@@ -1,23 +1,33 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+/// Models for chat sync
 model User {
-  id        String    @id @default(uuid())
-  email     String?   @unique
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+  id        String         @id @default(uuid())
+  email     String?        @unique
+  createdAt DateTime       @default(now())
+  updatedAt DateTime      @updatedAt
 
   // relación con Conversation (asegúrate de que Conversation tenga ownerId y owner)
   conversations Conversation[]
 }
 
 model Conversation {
-  id              String    @id
+  id              String      @id
   ownerId         String
-  owner           User      @relation(fields: [ownerId], references: [id])
+  owner           User        @relation(fields: [ownerId], references: [id])
   title           String?
   systemPurposeId String
   createdAt       DateTime
   updatedAt       DateTime
-  version         Int       @default(1)
-  isIncognito     Boolean   @default(false)
+  version         Int         @default(1)
+  isIncognito     Boolean     @default(false)
 
   messages Message[]
 
@@ -25,7 +35,7 @@ model Conversation {
 }
 
 model Message {
-  id             String   @id
+  id             String       @id
   conversationId String
   conversation   Conversation @relation(fields: [conversationId], references: [id])
   role           String
@@ -33,7 +43,8 @@ model Message {
   fragmentsJson  String?
   createdAt      DateTime
   updatedAt      DateTime?
-  isDeleted      Boolean   @default(false)
+  isDeleted      Boolean      @default(false)
   metaJson       String?
+
   @@index([conversationId])
 }
