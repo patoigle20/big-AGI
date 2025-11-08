@@ -13,9 +13,10 @@ enum LinkStorageDataType {
 }
 
 model TradeLink {
-  // ... (tu modelo actual)
-  dataType LinkStorageDataType
-  // Resto de tu modelo...
+  id         String              @id @default(uuid())
+  dataType   LinkStorageDataType
+  createdAt  DateTime            @default(now())
+  ownerId    String
 }
 
 /// Models for chat sync
